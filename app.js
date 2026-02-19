@@ -1,29 +1,7 @@
-
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-
-/************************************************************
- LOAD EXCEL MEALS
-*************************************************************/
 let MEALS = [];
-
-async function loadMeals() {
-  const res = await fetch("Monthly_Meal_Plan.xlsx");
-  const buffer = await res.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  MEALS = XLSX.utils.sheet_to_json(sheet);
-}
-
-/************************************************************
- STATE
-*************************************************************/
-let activeView = "today";
+let currentView = "today";
 let currentWeek = 1;
 
-/************************************************************
- VIEW HANDLERS
-*************************************************************/
 const views = {
   today: document.getElementById("view-today"),
   week: document.getElementById("view-week"),
@@ -32,81 +10,88 @@ const views = {
 };
 
 function show(view) {
-  Object.keys(views).forEach(v => views[v].classList.add("hidden"));
+  Object.values(views).forEach(v => v.classList.add("hidden"));
   views[view].classList.remove("hidden");
-  activeView = view;
 }
 
-/************************************************************
- NAV BUTTONS
-*************************************************************/
 document.getElementById("tab-today").onclick = () => show("today");
 document.getElementById("tab-week").onclick = () => show("week");
 document.getElementById("tab-month").onclick = () => show("month");
 document.getElementById("tab-shop").onclick = () => show("shop");
 
-/************************************************************
- RANDOMIZE (CYCLES WEEK 1–4)
-*************************************************************/
 document.getElementById("tab-randomize").onclick = () => {
   currentWeek++;
   if (currentWeek > 4) currentWeek = 1;
   renderWeek();
 };
 
-/************************************************************
- RENDERERS
-*************************************************************/
-function renderMeal(meal) {
-  return `
-    <div class="meal-card">
-      <!-- IMAGE PLACEHOLDER – REPLACE URL LATER -->
-      <img class="meal-img" src="${meal.ImageURL || 'https://images.unsplash.com/photo-1604908554162-18cf3f1a09a6?auto=format&fit=crop&w=1200&q=80'}">
+async function loadExcel() {
+  const res = await fetch("Monthly_Meal_Plan.xlsx");
+  const buffer = await res.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  MEALS = XLSX.utils.sheet_to_json(sheet);
+}
 
-      <h3>${meal.Meal}</h3>
-      <div>${meal.Calories} kcal</div>
+function renderCard(title, meal, kidsMeal = null) {
+  return `
+    <div class="card">
+      <!-- IMAGE PLACEHOLDER: replace URL later -->
+      <img src="https://images.unsplash.com/photo-1604908177453-7462950a6b94?auto=format&fit=crop&w=1200&q=80">
+
+      <div class="kcal-badge">650 kcal</div>
+
+      <h3>${title}</h3>
 
       <div class="dropdown">Ingredients ▾
-        <ul>
-          ${meal.Ingredients.split(",").map(i => `<li>${i}</li>`).join("")}
-        </ul>
+        <div class="dropdown-content">
+          <ul><li>Ingredient list from lookup</li></ul>
+        </div>
       </div>
 
-      ${meal.Kids === "Yes" ? `<span class="kids-tag">Kids Menu</span>` : ""}
+      ${kidsMeal ? `
+        <div class="dropdown">Kids Menu ▾
+          <div class="dropdown-content">${kidsMeal}</div>
+        </div>
+      ` : ""}
     </div>
   `;
 }
 
 function renderWeek() {
-  views.week.innerHTML = `<h2>Week ${currentWeek}</h2>` + MEALS
-    .filter(m => m.Week == currentWeek)
-    .map(renderMeal).join("");
+  views.week.innerHTML = `<h2>Week ${currentWeek}</h2>`;
+  MEALS.forEach(m => {
+    views.week.innerHTML += `
+      <h4>${m.Day}</h4>
+      ${renderCard("Breakfast", m["Breakfast (Family)"])}
+      ${renderCard("Lunch", m["Lunch (Adults)"], m["Kids Lunch (School)"])}
+      ${renderCard("Dinner", m["Dinner (Family)"])}
+    `;
+  });
 }
 
 function renderMonth() {
-  views.month.innerHTML = `<h2>Monthly View</h2>`;
-  for (let w = 1; w <= 4; w++) {
-    views.month.innerHTML += `<div class="meal-card">Week ${w}</div>`;
+  views.month.innerHTML = `<h2>Month View</h2>`;
+  for (let i = 1; i <= 4; i++) {
+    views.month.innerHTML += `<div class="card">Week ${i}</div>`;
   }
 }
 
-function renderShopping() {
+function renderShop() {
   views.shop.innerHTML = `
-    <h2>Shopping List</h2>
-    <table>
+    <table class="shop-table">
       <tr><th>Item</th><th>Store</th></tr>
       <tr><td>Eggs</td><td>Walmart</td></tr>
       <tr><td>Milk</td><td>Superstore</td></tr>
+      <tr><td>Bread</td><td>Walmart</td></tr>
     </table>
   `;
 }
 
-/************************************************************
- INIT
-*************************************************************/
 (async function init() {
-  await loadMeals();
+  await loadExcel();
   renderWeek();
   renderMonth();
-  renderShopping();
+  renderShop();
+  show("today");
 })();
