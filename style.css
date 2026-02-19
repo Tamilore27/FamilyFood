@@ -1,0 +1,54 @@
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f5f7fb;
+  margin: 0;
+}
+
+.header {
+  background: #fff;
+  padding: 12px 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.nav-buttons button {
+  margin-right: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: none;
+  background: #6b7cff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.meal-section {
+  background: #fff;
+  margin: 15px;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.meal-content, #kidsMenu {
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.hidden {
+  display: none;
+}
+
+.month-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.month-tiles div {
+  background: #eef1ff;
+  padding: 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+}
