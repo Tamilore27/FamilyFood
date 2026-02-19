@@ -1,97 +1,124 @@
-let MEALS = [];
-let currentView = "today";
-let currentWeek = 1;
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-const views = {
-  today: document.getElementById("view-today"),
-  week: document.getElementById("view-week"),
-  month: document.getElementById("view-month"),
-  shop: document.getElementById("view-shop"),
-};
+// ===== Helpers =====
+const $ = (id) => document.getElementById(id);
 
-function show(view) {
-  Object.values(views).forEach(v => v.classList.add("hidden"));
-  views[view].classList.remove("hidden");
-}
+// ===== Excel Loader =====
+let EXCEL_ROWS = [];
 
-document.getElementById("tab-today").onclick = () => show("today");
-document.getElementById("tab-week").onclick = () => show("week");
-document.getElementById("tab-month").onclick = () => show("month");
-document.getElementById("tab-shop").onclick = () => show("shop");
-
-document.getElementById("tab-randomize").onclick = () => {
-  currentWeek++;
-  if (currentWeek > 4) currentWeek = 1;
-  renderWeek();
-};
-
-async function loadExcel() {
+async function loadExcelMeals() {
   const res = await fetch("Monthly_Meal_Plan.xlsx");
   const buffer = await res.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  MEALS = XLSX.utils.sheet_to_json(sheet);
+  const wb = XLSX.read(buffer, { type: "array" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  EXCEL_ROWS = XLSX.utils.sheet_to_json(sheet);
 }
 
-function renderCard(title, meal, kidsMeal = null) {
+// ===== State =====
+let CURRENT_WEEK_INDEX = 0; // 0..3
+
+function cycleWeek() {
+  CURRENT_WEEK_INDEX = (CURRENT_WEEK_INDEX + 1) % 4;
+  renderWeek();
+}
+
+// ===== Wire header buttons (existing IDs) =====
+const tabs = {
+  today: $("tab-today"),
+  week: $("tab-week"),
+  shop: $("tab-shop"),
+};
+
+function setActiveTab(which) {
+  $("view-today").classList.toggle("hidden", which !== "today");
+  $("view-week").classList.toggle("hidden", which !== "week");
+  $("view-shop").classList.toggle("hidden", which !== "shop");
+
+  Object.entries(tabs).forEach(([k, el]) => el.classList.toggle("active", k === which));
+}
+
+tabs.today.onclick = () => setActiveTab("today");
+tabs.week.onclick = () => setActiveTab("week");
+tabs.shop.onclick = () => setActiveTab("shop");
+
+// ===== Add Randomize to header safely =====
+(function injectRandomizeBtn() {
+  const nav = document.querySelector(".nav");
+  if (!nav || document.getElementById("tab-randomize")) return;
+
+  const btn = document.createElement("button");
+  btn.className = "tab";
+  btn.id = "tab-randomize";
+  btn.textContent = "🎲 Randomize";
+  btn.onclick = cycleWeek;
+
+  nav.prepend(btn);
+})();
+
+// ===== Render Cards (reuses original styles) =====
+function renderMealCard(typeLabel, title, kcal, ingredients, kidsMenu) {
+  const ingHtml = (ingredients || []).map((i) => `<li>${i}</li>`).join("");
+
   return `
     <div class="card">
-      <!-- IMAGE PLACEHOLDER: replace URL later -->
-      <img src="https://images.unsplash.com/photo-1604908177453-7462950a6b94?auto=format&fit=crop&w=1200&q=80">
+      <div class="imgWrap">
+        <!-- IMAGE PLACEHOLDER: replace URL later -->
+        <img class="mealImg" src="https://images.unsplash.com/photo-1604908177453-7462950a6b94?auto=format&fit=crop&w=1200&q=80" />
+        <span class="kcal">${kcal || 0} kcal</span>
+      </div>
 
-      <div class="kcal-badge">650 kcal</div>
-
-      <h3>${title}</h3>
-
-      <div class="dropdown">Ingredients ▾
-        <div class="dropdown-content">
-          <ul><li>Ingredient list from lookup</li></ul>
+      <div class="cardTop">
+        <div>
+          <div class="mealType">${typeLabel}</div>
+          <div class="mealName">${title || "—"}</div>
         </div>
       </div>
 
-      ${kidsMeal ? `
-        <div class="dropdown">Kids Menu ▾
-          <div class="dropdown-content">${kidsMeal}</div>
-        </div>
-      ` : ""}
+      <div class="details">
+        <h3>Ingredients</h3>
+        <ul>${ingHtml || "<li>Add ingredients</li>"}</ul>
+        ${kidsMenu ? `<h3>Kids Menu</h3><div>${kidsMenu}</div>` : ""}
+      </div>
     </div>
   `;
 }
 
+// ===== Render Week (from Excel) =====
 function renderWeek() {
-  views.week.innerHTML = `<h2>Week ${currentWeek}</h2>`;
-  MEALS.forEach(m => {
-    views.week.innerHTML += `
-      <h4>${m.Day}</h4>
-      ${renderCard("Breakfast", m["Breakfast (Family)"])}
-      ${renderCard("Lunch", m["Lunch (Adults)"], m["Kids Lunch (School)"])}
-      ${renderCard("Dinner", m["Dinner (Family)"])}
+  const wrap = $("weekCards");
+  wrap.innerHTML = "";
+
+  const weekRows = EXCEL_ROWS.slice(CURRENT_WEEK_INDEX * 7, CURRENT_WEEK_INDEX * 7 + 7);
+
+  weekRows.forEach((r) => {
+    wrap.innerHTML += `
+      ${renderMealCard("Breakfast", r["Breakfast (Family)"], 450, ["Eggs", "Bread", "Milk"])}
+      ${renderMealCard("Lunch", r["Lunch (Adults)"], 650, ["Rice", "Chicken"], r["Kids Lunch (School)"])}
+      ${renderMealCard("Dinner", r["Dinner (Family)"], 800, ["Egusi", "Palm oil", "Onions"])}
     `;
   });
 }
 
-function renderMonth() {
-  views.month.innerHTML = `<h2>Month View</h2>`;
-  for (let i = 1; i <= 4; i++) {
-    views.month.innerHTML += `<div class="card">Week ${i}</div>`;
-  }
-}
+// ===== Render Today (default to today's weekday) =====
+function renderToday() {
+  const idx = new Date().getDay(); // Sun=0
+  const mondayFirst = (idx + 6) % 7;
 
-function renderShop() {
-  views.shop.innerHTML = `
-    <table class="shop-table">
-      <tr><th>Item</th><th>Store</th></tr>
-      <tr><td>Eggs</td><td>Walmart</td></tr>
-      <tr><td>Milk</td><td>Superstore</td></tr>
-      <tr><td>Bread</td><td>Walmart</td></tr>
-    </table>
+  const weekRows = EXCEL_ROWS.slice(CURRENT_WEEK_INDEX * 7, CURRENT_WEEK_INDEX * 7 + 7);
+  const today = weekRows[mondayFirst];
+
+  const wrap = $("todayCards");
+  wrap.innerHTML = `
+    ${renderMealCard("Breakfast", today["Breakfast (Family)"], 450, ["Eggs", "Bread", "Milk"])}
+    ${renderMealCard("Lunch", today["Lunch (Adults)"], 650, ["Rice", "Chicken"], today["Kids Lunch (School)"])}
+    ${renderMealCard("Dinner", today["Dinner (Family)"], 800, ["Egusi", "Palm oil", "Onions"])}
   `;
 }
 
+// ===== Init =====
 (async function init() {
-  await loadExcel();
+  await loadExcelMeals();
+  renderToday();
   renderWeek();
-  renderMonth();
-  renderShop();
-  show("today");
+  setActiveTab("today");
 })();
