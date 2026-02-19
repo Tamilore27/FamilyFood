@@ -1,1 +1,45 @@
-ccccv 
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Family Meals</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🍲</div>
+      <div>
+        <div class="title">Family Meals</div>
+        <div class="subtitle" id="subtitle">Ottawa • Family of 4</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <!-- NEW ORDER -->
+      <button class="tab" id="tab-randomize">🎲 Randomize</button>
+      <button class="tab active" id="tab-today">Today</button>
+      <button class="tab" id="tab-week">Week</button>
+      <button class="tab" id="tab-month">Month</button>
+      <button class="tab" id="tab-shop">Shopping List</button>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section id="view-today" class="view"></section>
+    <section id="view-week" class="view hidden"></section>
+    <section id="view-month" class="view hidden"></section>
+    <section id="view-shop" class="view hidden"></section>
+  </main>
+
+  <footer class="footer">
+    <div>Folder website • Runs locally • Plan saved on this computer</div>
+  </footer>
+
+  <!-- Excel Reader -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
