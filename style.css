@@ -1,61 +1,40 @@
-/* === KEEP ORIGINAL COLORS & STYLES === */
-
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #fafafa;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #ffffff;
-  border-bottom: 1px solid #eee;
-}
-
-.nav .tab {
-  background: #f1f1f1;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.nav .active {
-  background: #000;
-  color: #fff;
-}
-
-.container {
-  max-width: 60%;
-  margin: auto;
-  padding: 20px;
-}
-
-.hidden { display: none; }
-
-.meal-card {
-  border-radius: 12px;
-  padding: 12px;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  margin-bottom: 12px;
-}
-
-.meal-img {
-  width: 100%;
-  border-radius: 12px;
+.kcal-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: #fff2cc;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .dropdown {
   cursor: pointer;
-  color: #333;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 12px;
 }
 
-.kids-tag {
-  background: #ffe1e1;
-  padding: 2px 6px;
-  border-radius: 4px;
+.dropdown-content {
+  display: none;
   font-size: 12px;
+  margin-top: 6px;
+}
+
+.dropdown.open .dropdown-content {
+  display: block;
+}
+
+.shop-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shop-table th, .shop-table td {
+  border-bottom: 1px solid #eee;
+  padding: 8px;
+  text-align: left;
 }
