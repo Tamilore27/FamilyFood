@@ -18,28 +18,114 @@
     </div>
 
     <nav class="nav">
-      <!-- NEW ORDER -->
-      <button class="tab" id="tab-randomize">🎲 Randomize</button>
+      <button class="tab tab-rand" id="tab-rand" title="Advance to next week">🎲 Randomize</button>
       <button class="tab active" id="tab-today">Today</button>
       <button class="tab" id="tab-week">Week</button>
-      <button class="tab" id="tab-month">Month</button>
+      <div class="monthTabWrap">
+        <button class="tab" id="tab-month">Month</button>
+        <div class="weekDropdown" id="weekDropdown">
+          <button class="weekTile" data-week="0">Week 1<span>Jollof Rice</span></button>
+          <button class="weekTile" data-week="1">Week 2<span>Fried Rice</span></button>
+          <button class="weekTile" data-week="2">Week 3<span>White Rice</span></button>
+          <button class="weekTile" data-week="3">Week 4<span>Rice &amp; Beans</span></button>
+        </div>
+      </div>
       <button class="tab" id="tab-shop">Shopping List</button>
     </nav>
   </header>
 
   <main class="container">
-    <section id="view-today" class="view"></section>
-    <section id="view-week" class="view hidden"></section>
-    <section id="view-month" class="view hidden"></section>
-    <section id="view-shop" class="view hidden"></section>
+
+    <!-- TODAY -->
+    <section id="view-today" class="view">
+      <div class="viewHeader">
+        <div>
+          <h1 id="todayTitle">Today</h1>
+        </div>
+        <div class="pill" id="todayPill"></div>
+      </div>
+      <div id="todayCards" class="grid"></div>
+      <p class="hint">Tip: tap a meal card to expand ingredients &amp; recipe.</p>
+    </section>
+
+    <!-- WEEK -->
+    <section id="view-week" class="view hidden">
+      <div class="viewHeader">
+        <div>
+          <h1 id="weekTitle">Week Plan</h1>
+        </div>
+        <div class="pill" id="weekPill">Mon → Sun</div>
+      </div>
+      <div class="dayTabs" id="dayTabs"></div>
+      <div class="cards" id="weekCards"></div>
+      <p class="hint">Tip: choose a day above. Cards expand when clicked.</p>
+    </section>
+
+    <!-- MONTH -->
+    <section id="view-month" class="view hidden">
+      <div class="viewHeader">
+        <div>
+          <h1>Monthly Overview</h1>
+        </div>
+        <div class="pill">4-Week Plan</div>
+      </div>
+      <div id="monthGrid" class="monthGrid"></div>
+    </section>
+
+    <!-- SHOPPING -->
+    <section id="view-shop" class="view hidden">
+      <div class="viewHeader">
+        <div>
+          <h1>Shopping List</h1>
+          <div class="miniActions">
+            <button class="btnSmall" id="refreshShopBtn">🔄 Recalculate</button>
+          </div>
+        </div>
+        <div class="pill" id="budgetPill"></div>
+      </div>
+
+      <div class="shopControls">
+        <label class="selectWrap">
+          Week:
+          <select id="weekFilter">
+            <option value="0">Week 1 — Jollof Rice</option>
+            <option value="1">Week 2 — Fried Rice</option>
+            <option value="2">Week 3 — White Rice</option>
+            <option value="3">Week 4 — Rice &amp; Beans</option>
+          </select>
+        </label>
+        <label class="selectWrap">
+          Store:
+          <select id="storeFilter">
+            <option value="ALL">All stores</option>
+            <option value="Costco">Costco</option>
+            <option value="Walmart">Walmart</option>
+            <option value="AfricanStore">African Store</option>
+            <option value="Unknown">Needs price</option>
+          </select>
+        </label>
+        <label class="selectWrap">
+          Group:
+          <select id="groupBy">
+            <option value="category">By category</option>
+            <option value="store">By store</option>
+          </select>
+        </label>
+        <button class="btn" id="printBtn">🖨️ Print</button>
+      </div>
+
+      <div class="shopSummary" id="shopSummary"></div>
+      <div class="shopList" id="shopList"></div>
+      <p class="hint">Prices are estimates in <code>data.js</code>. Add more items to the Price Book to improve accuracy.</p>
+    </section>
+
   </main>
 
   <footer class="footer">
-    <div>Folder website • Runs locally • Plan saved on this computer</div>
+    <div>Family Meals • Ottawa • Plan cycles through 4 weeks</div>
   </footer>
 
-  <!-- Excel Reader -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
