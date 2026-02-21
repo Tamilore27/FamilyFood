@@ -3,24 +3,20 @@ const $ = (id) => document.getElementById(id);
 // ===== Active week index (0-3, cycles) =====
 let ACTIVE_WEEK_IDX = parseInt(localStorage.getItem("activeWeekIdx") || "0", 10) % 4;
 
-function getActiveWeek() {
-  return FOUR_WEEK_PLAN[ACTIVE_WEEK_IDX];
-}
+function getActiveWeek() { return FOUR_WEEK_PLAN[ACTIVE_WEEK_IDX]; }
 
 // ===== Views & Tabs =====
-const VIEW_IDS  = ["today", "week", "month", "shop"];
-const TAB_IDS   = ["tab-today", "tab-week", "tab-month", "tab-shop"];
+const VIEW_IDS = ["today", "week", "month", "shop"];
 
 function setActiveTab(which) {
   VIEW_IDS.forEach((v) => {
     const el = $("view-" + v);
     if (el) el.classList.toggle("hidden", v !== which);
   });
-  TAB_IDS.forEach((tid) => {
-    const t = $(tid);
-    if (t) t.classList.toggle("active", tid === "tab-" + which);
+  ["today","week","month","shop"].forEach((k) => {
+    const t = $("tab-" + k);
+    if (t) t.classList.toggle("active", k === which);
   });
-  // close month dropdown when switching
   $("weekDropdown").classList.remove("open");
 }
 
@@ -28,19 +24,16 @@ $("tab-today").onclick = () => { setActiveTab("today"); renderToday(); };
 $("tab-week").onclick  = () => { setActiveTab("week");  renderWeek(); };
 $("tab-shop").onclick  = () => { setActiveTab("shop");  renderShopping(); };
 
-// Month tab toggles dropdown
 $("tab-month").onclick = (e) => {
   e.stopPropagation();
   const dd = $("weekDropdown");
   const isOpen = dd.classList.toggle("open");
   if (isOpen) {
-    // if already in month view, don't re-trigger; just show picker
     setActiveTab("month");
     renderMonth(ACTIVE_WEEK_IDX);
   }
 };
 
-// Week tiles in dropdown
 document.querySelectorAll(".weekTile").forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -50,7 +43,6 @@ document.querySelectorAll(".weekTile").forEach((btn) => {
     $("weekDropdown").classList.remove("open");
     setActiveTab("month");
     renderMonth(wi);
-    // also update week/today silently
     renderToday();
     renderWeek();
   });
@@ -58,51 +50,48 @@ document.querySelectorAll(".weekTile").forEach((btn) => {
 
 document.addEventListener("click", () => $("weekDropdown").classList.remove("open"));
 
-// Randomize button — advance to next week, loop at 4
+// Randomize → advance to next week
 $("tab-rand").onclick = () => {
   ACTIVE_WEEK_IDX = (ACTIVE_WEEK_IDX + 1) % 4;
   localStorage.setItem("activeWeekIdx", ACTIVE_WEEK_IDX);
   renderToday();
   renderWeek();
   renderShopping();
-  // if month is active, re-render
   if (!$("view-month").classList.contains("hidden")) renderMonth(ACTIVE_WEEK_IDX);
+  // flash confirm
+  const btn = $("tab-rand");
+  btn.textContent = "✓ " + getActiveWeek().weekLabel;
+  setTimeout(() => { btn.textContent = "🎲 Randomize"; }, 2000);
 };
 
 $("printBtn").onclick = () => window.print();
 
 // ===== Date helpers =====
-function weekdayIndexMondayFirst(date = new Date()) {
-  return (date.getDay() + 6) % 7;
-}
+function weekdayIdxMon(date = new Date()) { return (date.getDay() + 6) % 7; }
 function formatDateLong(d) {
   return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric", year: "numeric" });
 }
 
-// ===== Card builder =====
-function buildDropdownBtn(label, items, extraClass) {
+// ===== Dropdown helper =====
+function makeDropBtn(label, items, extraClass) {
   const wrap = document.createElement("div");
-  wrap.className = "dropWrap " + (extraClass || "");
+  wrap.className = "dropWrap" + (extraClass ? " " + extraClass : "");
 
   const btn = document.createElement("button");
   btn.className = "tag tagDrop";
-  btn.innerHTML = label + " <span class='dropArrow'>▾</span>";
+  btn.innerHTML = label + ' <span class="dropArrow">▾</span>';
 
   const panel = document.createElement("div");
   panel.className = "dropPanel";
   panel.innerHTML = items.length
-    ? items.map(i => `<div class="dropItem">${escapeHtml(i)}</div>`).join("")
+    ? items.map(i => `<div class="dropItem">${escapeHtml(String(i))}</div>`).join("")
     : `<div class="dropItem muted">—</div>`;
 
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
-    const isOpen = panel.classList.toggle("open");
-    // close all other dropdowns
-    document.querySelectorAll(".dropPanel.open").forEach(p => {
-      if (p !== panel) p.classList.remove("open");
-    });
+    document.querySelectorAll(".dropPanel.open").forEach(p => { if (p !== panel) p.classList.remove("open"); });
+    panel.classList.toggle("open");
   });
-
   wrap.appendChild(btn);
   wrap.appendChild(panel);
   return wrap;
@@ -112,89 +101,104 @@ document.addEventListener("click", () => {
   document.querySelectorAll(".dropPanel.open").forEach(p => p.classList.remove("open"));
 });
 
+// ===== Card builder — VERTICAL STACK style =====
 function renderMealCard(typeLabel, m, mealType) {
-  const ingList = (m.ingredients || [])
-    .map((x) => `${x.name} — ${prettyQty(x.qty)} ${x.unit}`)
-    ;
-  const steps = (m.steps || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("");
+  const ingItems = (m.ingredients || []).map(x => `${x.name} — ${prettyQty(x.qty)} ${x.unit}`);
+  const steps = (m.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
 
-  const el = document.createElement("div");
-  el.className = "card";
+  const card = document.createElement("div");
+  card.className = "card";
 
-  const imgHtml = m.image
-    ? `<img class="mealImg" src="${escapeHtml(m.image)}" alt="${escapeHtml(m.title || "Meal")}" loading="lazy" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'; this.parentElement.classList.add('imgError');" />`
-    : `<div class="mealImg placeholder"></div>`;
-
-  el.innerHTML = `
-    <div class="imgWrap">${imgHtml}</div>
-    <div class="cardTop">
-      <div>
-        <div class="mealType">${escapeHtml(typeLabel)}</div>
-        <div class="mealName">${escapeHtml(m.title || "")}</div>
-        <div class="small">${escapeHtml(m.cuisine || "")}</div>
-      </div>
-      <div class="kcal">${Number(m.kcalPerServing || 0)} kcal</div>
-    </div>
-    <div class="tags" id="tags-placeholder-${Math.random().toString(36).slice(2)}"></div>
-    <div class="details">
-      <h3>Recipe Steps</h3>
-      <ol>${steps}</ol>
-      ${m.note ? `<div class="small"><strong>Note:</strong> ${escapeHtml(m.note)}</div>` : ""}
-    </div>
-  `;
-
-  // Build tag area with dropdowns
-  const tagsArea = el.querySelector(".tags");
-
-  // Ingredients dropdown (all meal types)
-  tagsArea.appendChild(buildDropdownBtn("🧂 Ingredients", ingList));
-
-  // Kids menu dropdown (lunch only)
-  if (mealType === "lunch") {
-    const km = m.kidsMenu;
-    const kidsItems = km
-      ? [`${km.title}`, `~${km.kcal} kcal`]
-      : ["No kids menu listed"];
-    tagsArea.appendChild(buildDropdownBtn("👦 Kids Menu", kidsItems, "tagKids"));
+  // Image — left panel
+  const imgDiv = document.createElement("div");
+  imgDiv.className = "cardImg";
+  if (m.image) {
+    const img = document.createElement("img");
+    img.className = "mealImg";
+    img.src = m.image;
+    img.alt = m.title || "Meal";
+    img.loading = "lazy";
+    img.onerror = () => { imgDiv.classList.add("imgError"); img.style.display = "none"; };
+    imgDiv.appendChild(img);
+  } else {
+    imgDiv.classList.add("imgPlaceholder");
   }
 
-  // Expand card on click (but not on dropdown clicks)
-  el.addEventListener("click", (e) => {
+  // Content — right panel
+  const content = document.createElement("div");
+  content.className = "cardContent";
+
+  // Top row: type label + kcal
+  const topRow = document.createElement("div");
+  topRow.className = "cardTopRow";
+  topRow.innerHTML = `
+    <div>
+      <div class="mealType">${escapeHtml(typeLabel)}</div>
+      <div class="mealName">${escapeHtml(m.title || "")}</div>
+      <div class="mealCuisine">${escapeHtml(m.cuisine || "")}</div>
+    </div>
+    <div class="kcal">${Number(m.kcalPerServing || 0)} kcal</div>
+  `;
+  content.appendChild(topRow);
+
+  // Tags row with dropdowns
+  const tagsRow = document.createElement("div");
+  tagsRow.className = "tagsRow";
+  tagsRow.appendChild(makeDropBtn("🧂 Ingredients", ingItems));
+  if (mealType === "lunch") {
+    const km = m.kidsMenu;
+    const kidsItems = km ? [`${km.title}`, `~${km.kcal} kcal`] : ["No kids menu listed"];
+    tagsRow.appendChild(makeDropBtn("👦 Kids Menu", kidsItems, "kidsDropWrap"));
+  }
+  content.appendChild(tagsRow);
+
+  // Expandable recipe steps
+  const details = document.createElement("div");
+  details.className = "cardDetails";
+  details.innerHTML = `<h3>Recipe Steps</h3><ol>${steps}</ol>`;
+  content.appendChild(details);
+
+  // Toggle expand on click (but not on dropdown)
+  card.appendChild(imgDiv);
+  card.appendChild(content);
+
+  card.addEventListener("click", (e) => {
     if (e.target.closest(".dropWrap")) return;
-    el.classList.toggle("expanded");
+    card.classList.toggle("expanded");
   });
 
-  return el;
+  return card;
 }
 
 // ===== Render Today =====
 function renderToday() {
   const week = getActiveWeek();
-  const idx = weekdayIndexMondayFirst(new Date());
+  const idx = weekdayIdxMon(new Date());
   const day = week.days[idx];
 
   $("todayTitle").textContent = "Today";
   $("todayPill").textContent = `${day.name} • ${formatDateLong(new Date())}`;
-  $("subtitle").textContent = `${FAMILY.location} • Family of ${FAMILY.size} • ${week.weekLabel}`;
+  $("weekBadge").textContent = week.weekLabel;
 
   const wrap = $("todayCards");
   wrap.innerHTML = "";
   wrap.appendChild(renderMealCard("Breakfast", day.breakfast, "breakfast"));
-  wrap.appendChild(renderMealCard("Lunch", day.lunch, "lunch"));
-  wrap.appendChild(renderMealCard("Dinner", day.dinner, "dinner"));
+  wrap.appendChild(renderMealCard("Lunch",     day.lunch,    "lunch"));
+  wrap.appendChild(renderMealCard("Dinner",    day.dinner,   "dinner"));
 }
 
 // ===== Render Week =====
 function renderWeek() {
   const week = getActiveWeek();
-  $("weekTitle").textContent = `Week Plan — ${week.weekLabel}`;
+  $("weekTitle").textContent = "Week Plan";
+  $("weekBadge2").textContent = week.weekLabel;
   $("weekPill").textContent = "Mon → Sun";
 
   const tabsWrap = $("dayTabs");
   const cardsWrap = $("weekCards");
   tabsWrap.innerHTML = "";
 
-  let activeIdx = weekdayIndexMondayFirst(new Date());
+  let activeIdx = weekdayIdxMon(new Date());
 
   week.days.forEach((d, i) => {
     const b = document.createElement("button");
@@ -203,20 +207,20 @@ function renderWeek() {
     b.onclick = () => {
       activeIdx = i;
       [...tabsWrap.children].forEach((x, j) => x.classList.toggle("active", j === i));
-      renderWeekCards(i);
+      showDay(i);
     };
     tabsWrap.appendChild(b);
   });
 
-  function renderWeekCards(i) {
+  function showDay(i) {
     const day = week.days[i];
     cardsWrap.innerHTML = "";
     cardsWrap.appendChild(renderMealCard(`${day.name} • Breakfast`, day.breakfast, "breakfast"));
-    cardsWrap.appendChild(renderMealCard(`${day.name} • Lunch`, day.lunch, "lunch"));
-    cardsWrap.appendChild(renderMealCard(`${day.name} • Dinner`, day.dinner, "dinner"));
+    cardsWrap.appendChild(renderMealCard(`${day.name} • Lunch`,     day.lunch,    "lunch"));
+    cardsWrap.appendChild(renderMealCard(`${day.name} • Dinner`,    day.dinner,   "dinner"));
   }
 
-  renderWeekCards(activeIdx);
+  showDay(activeIdx);
 }
 
 // ===== Render Month =====
@@ -237,25 +241,21 @@ function renderMonth(highlightWeek) {
     daysGrid.className = "monthDaysGrid";
 
     week.days.forEach((day) => {
-      const dayTile = document.createElement("div");
-      dayTile.className = "monthDayTile";
-
-      dayTile.innerHTML = `
-        <div class="monthDayName">${day.name.slice(0, 3)}</div>
+      const tile = document.createElement("div");
+      tile.className = "monthDayTile";
+      tile.innerHTML = `
+        <div class="monthDayName">${day.name.slice(0,3)}</div>
         <div class="monthMealRow"><span class="mTypeLabel">B</span><span class="mTitle">${escapeHtml(day.breakfast.title)}</span></div>
         <div class="monthMealRow"><span class="mTypeLabel lunch">L</span><span class="mTitle">${escapeHtml(day.lunch.title)}</span></div>
         <div class="monthMealRow"><span class="mTypeLabel dinner">D</span><span class="mTitle">${escapeHtml(day.dinner.title)}</span></div>
       `;
-
-      // Click tile to jump to that week's day view
-      dayTile.addEventListener("click", () => {
+      tile.addEventListener("click", () => {
         ACTIVE_WEEK_IDX = wi;
         localStorage.setItem("activeWeekIdx", wi);
         setActiveTab("week");
         renderWeek();
       });
-
-      daysGrid.appendChild(dayTile);
+      daysGrid.appendChild(tile);
     });
 
     weekBlock.appendChild(daysGrid);
@@ -263,13 +263,13 @@ function renderMonth(highlightWeek) {
   });
 }
 
-// ===== Shopping list =====
+// ===== Shopping =====
 function toBaseUnit(qty, unit) {
   const u = String(unit || "").toLowerCase();
-  if (u === "kg")  return { qty: qty * 1000, unit: "g" };
-  if (u === "g")   return { qty, unit: "g" };
-  if (u === "l")   return { qty: qty * 1000, unit: "ml" };
-  if (u === "ml")  return { qty, unit: "ml" };
+  if (u === "kg") return { qty: qty * 1000, unit: "g" };
+  if (u === "g")  return { qty, unit: "g" };
+  if (u === "l")  return { qty: qty * 1000, unit: "ml" };
+  if (u === "ml") return { qty, unit: "ml" };
   return { qty, unit: "pcs" };
 }
 function fromBaseUnit(qty, unit) {
@@ -277,37 +277,36 @@ function fromBaseUnit(qty, unit) {
   if (unit === "ml" && qty >= 1000) return { qty: qty / 1000, unit: "L" };
   return { qty, unit };
 }
-function buildWeeklyIngredientTotals(weekPlan) {
+function buildTotals(weekPlan) {
   const totals = new Map();
   weekPlan.days.forEach((d) => {
     [d.breakfast, d.lunch, d.dinner].forEach((m) => {
       (m.ingredients || []).forEach((x) => {
         const base = toBaseUnit(x.qty, x.unit);
-        const key = x.name;
-        const prev = totals.get(key);
-        if (!prev) totals.set(key, { qty: base.qty, unit: base.unit });
-        else totals.set(key, { qty: prev.qty + base.qty, unit: prev.unit });
+        const prev = totals.get(x.name);
+        totals.set(x.name, prev
+          ? { qty: prev.qty + base.qty, unit: prev.unit }
+          : { qty: base.qty, unit: base.unit });
       });
     });
   });
   return totals;
 }
-function estimateCostForItem(name, totalBase) {
+function estimateCost(name, totalBase) {
   const pb = PRICE_BOOK[name];
   if (!pb) return { known: false, cost: 0, store: "Unknown", packs: 0, packPrice: 0 };
   const packBase = toBaseUnit(pb.packSize, pb.unit);
   const packs = packBase.qty > 0 ? Math.ceil(totalBase.qty / packBase.qty) : 0;
-  const cost = packs * pb.price;
-  return { known: true, cost, store: pb.store, packs, packPrice: pb.price };
+  return { known: true, cost: packs * pb.price, store: pb.store, packs, packPrice: pb.price };
 }
-function inferCategory(name) {
+function inferCat(name) {
   const pb = PRICE_BOOK[name];
   if (pb?.category) return pb.category;
-  const n = String(name).toLowerCase();
-  if (n.includes("chicken") || n.includes("beef") || n.includes("salmon") || n.includes("tuna") || n.includes("fish") || n.includes("shrimp") || n.includes("sausage")) return "Meat/Fish";
-  if (n.includes("milk") || n.includes("cheese") || n.includes("yogurt") || n.includes("eggs") || n.includes("butter")) return "Dairy";
-  if (n.includes("rice") || n.includes("oats") || n.includes("pasta") || n.includes("flour") || n.includes("beans") || n.includes("egusi") || n.includes("oil") || n.includes("cereal") || n.includes("bread")) return "Pantry";
-  if (n.includes("onion") || n.includes("tomato") || n.includes("pepper") || n.includes("banana") || n.includes("berries") || n.includes("apple") || n.includes("carrot") || n.includes("lettuce") || n.includes("cucumber") || n.includes("potato") || n.includes("plantain") || n.includes("yam") || n.includes("vegetable")) return "Produce";
+  const n = name.toLowerCase();
+  if (/chicken|beef|salmon|tuna|fish|shrimp|sausage/.test(n)) return "Meat/Fish";
+  if (/milk|cheese|yogurt|eggs|butter/.test(n)) return "Dairy";
+  if (/rice|oats|pasta|flour|beans|egusi|oil|cereal|bread/.test(n)) return "Pantry";
+  if (/onion|tomato|pepper|banana|berr|apple|carrot|lettuce|cucumber|potato|plantain|yam|vegetable/.test(n)) return "Produce";
   return "Other";
 }
 function prettyQty(q) {
@@ -318,50 +317,38 @@ function prettyQty(q) {
 function renderShopping() {
   const weekIdx = parseInt($("weekFilter").value, 10);
   const weekPlan = FOUR_WEEK_PLAN[weekIdx];
-  const totals = buildWeeklyIngredientTotals(weekPlan);
+  const totals = buildTotals(weekPlan);
   const storeFilter = $("storeFilter").value;
   const groupBy = $("groupBy").value;
 
   const rows = [];
   totals.forEach((base, name) => {
     const shown = fromBaseUnit(base.qty, base.unit);
-    const costInfo = estimateCostForItem(name, base);
-    rows.push({
-      name,
-      qty: shown.qty,
-      unit: shown.unit,
-      category: inferCategory(name),
-      store: costInfo.known ? costInfo.store : "Unknown",
-      costKnown: costInfo.known,
-      cost: costInfo.cost,
-      packs: costInfo.packs,
-      packPrice: costInfo.packPrice,
-    });
+    const cost = estimateCost(name, base);
+    rows.push({ name, qty: shown.qty, unit: shown.unit, category: inferCat(name),
+      store: cost.known ? cost.store : "Unknown",
+      costKnown: cost.known, cost: cost.cost, packs: cost.packs, packPrice: cost.packPrice });
   });
 
-  const filtered = rows.filter((r) => storeFilter === "ALL" || r.store === storeFilter);
+  const filtered = rows.filter(r => storeFilter === "ALL" || r.store === storeFilter);
   const totalCost = filtered.reduce((s, r) => s + (r.costKnown ? r.cost : 0), 0);
-  const unknownCount = filtered.filter((r) => !r.costKnown).length;
+  const unknownCount = filtered.filter(r => !r.costKnown).length;
 
-  $("budgetPill").textContent = `Est. total: $${totalCost.toFixed(2)}` + (unknownCount ? ` • ${unknownCount} need a price` : "");
+  $("budgetPill").textContent = `Est: $${totalCost.toFixed(2)}` + (unknownCount ? ` • ${unknownCount} need price` : "");
 
   const storeTotals = {};
-  filtered.forEach((r) => {
-    if (!r.costKnown) return;
-    storeTotals[r.store] = (storeTotals[r.store] || 0) + r.cost;
-  });
+  filtered.forEach(r => { if (r.costKnown) storeTotals[r.store] = (storeTotals[r.store] || 0) + r.cost; });
 
   $("shopSummary").innerHTML = `
-    <div><strong>${weekPlan.weekLabel}</strong> — sums ingredients across Mon–Sun, rounds up to pack sizes.</div>
+    <div><strong>${weekPlan.weekLabel}</strong> — full week ingredient totals, rounded up to pack sizes.</div>
     <div class="small" style="margin-top:8px;">
       ${Object.keys(storeTotals).length
-        ? Object.entries(storeTotals).map(([k, v]) => `${escapeHtml(k)}: <strong>$${v.toFixed(2)}</strong>`).join(" • ")
-        : "Add more items to PRICE_BOOK in data.js."}
-    </div>
-  `;
+        ? Object.entries(storeTotals).map(([k,v]) => `${escapeHtml(k)}: <strong>$${v.toFixed(2)}</strong>`).join(" • ")
+        : "Edit PRICE_BOOK in data.js for better totals."}
+    </div>`;
 
   const groups = new Map();
-  filtered.sort((a, b) => a.name.localeCompare(b.name)).forEach((r) => {
+  filtered.sort((a,b)=>a.name.localeCompare(b.name)).forEach(r => {
     const key = groupBy === "store" ? r.store : r.category;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(r);
@@ -369,22 +356,19 @@ function renderShopping() {
 
   const listWrap = $("shopList");
   listWrap.innerHTML = "";
-
   groups.forEach((items, key) => {
-    const groupCost = items.reduce((s, r) => s + (r.costKnown ? r.cost : 0), 0);
+    const groupCost = items.reduce((s,r)=>s+(r.costKnown?r.cost:0),0);
     const g = document.createElement("div");
     g.className = "group";
     g.innerHTML = `
       <div class="groupTitle"><div>${escapeHtml(key)}</div><span>$${groupCost.toFixed(2)}</span></div>
-      ${items.map((r) => `
+      ${items.map(r=>`
         <div class="itemRow">
           <div class="left">${escapeHtml(r.name)}</div>
-          <div class="right">
-            ${prettyQty(r.qty)} ${escapeHtml(r.unit)}
-            ${r.costKnown ? ` • $${r.cost.toFixed(2)} (${r.packs}×$${r.packPrice.toFixed(2)})` : ` • <em>add price</em>`}
+          <div class="right">${prettyQty(r.qty)} ${escapeHtml(r.unit)}
+            ${r.costKnown?` • $${r.cost.toFixed(2)} (${r.packs}×$${r.packPrice.toFixed(2)})`:` • <em>add price</em>`}
           </div>
-        </div>`).join("")}
-    `;
+        </div>`).join("")}`;
     listWrap.appendChild(g);
   });
 }
@@ -394,12 +378,12 @@ $("storeFilter").addEventListener("change", renderShopping);
 $("groupBy").addEventListener("change", renderShopping);
 $("weekFilter").addEventListener("change", renderShopping);
 
-// ===== Utils =====
 function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]));
+  return String(str).replace(/[&<>"']/g,(m)=>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 }
 
-// ===== Initial render =====
+// ===== Boot =====
 renderToday();
 renderWeek();
 renderShopping();
